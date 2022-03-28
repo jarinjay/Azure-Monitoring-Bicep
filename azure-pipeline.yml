@@ -1,0 +1,64 @@
+trigger: none
+
+parameters: 
+  - name: environment
+    displayName: Environemnt to deploy the Key Vault
+    type: string
+    default: DEV
+    values:
+    - DEV
+    - PRD
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group : VG1
+  - group : VG2
+
+
+stages:
+
+- stage: Deploy_dev
+  displayName: Deploy Monitoring in Dev Environment
+  condition:  eq('${{ parameters.environment }}', 'DEV')
+  variables:
+    - group: VG1
+  jobs: 
+    - job: deploy_dev
+      displayName: 'Deploying Monitoring with Bicep'
+      variables:
+        resourceGroup: $(resourceGroupName)
+        parametersFile: '@./parameters/parameters_dev.json'
+      steps:
+        - template: ./blocks/template.yml
+          parameters: 
+            connection : $(azureServiceConnection_DTA)
+
+            
+    - job: Manual_Verification
+      dependsOn: deploy_dev
+      condition: in(dependencies.deploy_dev.result, 'Succeeded')
+      pool: server
+      steps:
+       - task: ManualValidation@0
+         inputs:
+           notifyUsers: 'Email Address'
+           instructions: 'validated'
+         timeoutInMinutes: 1
+
+- stage: Deploy_PR
+  displayName: Deploy Monitoring in PR Environment
+  condition:  eq('${{ parameters.environment }}', 'PRD')
+  variables:
+    - group: VG2
+  jobs: 
+    - job: deploy_PRD
+      displayName: 'Deploying Monitoring with Bicep in PR'
+      variables:
+        resourceGroup: $(resourceGroupName)
+        parametersFile: '@./parameters/parameters_prd.json'
+      steps:
+        - template: ./blocks/template.yml
+          parameters: 
+            connection : $(azureServiceConnection_PRD)
