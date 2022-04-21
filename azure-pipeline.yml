@@ -2,7 +2,7 @@ trigger: none
 
 parameters: 
   - name: environment
-    displayName: Environemnt to deploy the Key Vault
+    displayName: Environment to deploy
     type: string
     default: DEV
     values:
